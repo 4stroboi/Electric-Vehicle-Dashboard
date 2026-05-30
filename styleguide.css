@@ -1,0 +1,6 @@
+:root {
+  --label-colorlightprimary: rgba(0, 0, 0, 1);
+  --lineicon: rgba(51, 54, 63, 1);
+  --coolgray-60: rgba(105, 112, 119, 1);
+  --tight-elevation-1: 0px 1px 3px 0px rgba(0, 0, 0, 0.3);
+}
