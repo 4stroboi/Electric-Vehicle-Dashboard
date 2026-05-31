@@ -522,8 +522,20 @@
     .dark-mode-active .rear-left,
     .dark-mode-active .rear-right,
     .dark-mode-active .estimated-range {
-      color: #8a8d9a !important;
-      /* slate grey metadata text for glance contrast */
+      color: #ffffff !important;
+      /* bright white metadata text for glance contrast */
+    }
+
+    /* Car Information text visibility overrides in Dark Mode */
+    .dark-mode-active .battery-fuel,
+    .dark-mode-active .mileage-statistics,
+    .dark-mode-active .text-wrapper-6,
+    .dark-mode-active .text-wrapper-7,
+    .dark-mode-active .frunk,
+    .dark-mode-active .trunk,
+    .dark-mode-active .tire-pressure,
+    .dark-mode-active .frunk-2 {
+      color: #ffffff !important;
     }
 
     /* Autopilot lane dividers styled to match dark mode */
@@ -671,7 +683,11 @@
       font-size: 39px !important;
       line-height: 1 !important;
     }
-    .element-psi, .element-psi-2, .element-psi-3, .car-infomation .p {
+
+    .element-psi,
+    .element-psi-2,
+    .element-psi-3,
+    .car-infomation .p {
       line-height: 1 !important;
     }
 
@@ -683,6 +699,7 @@
       justify-content: center;
       align-items: center;
     }
+
     .homepage-light-mode .time,
     .dark-mode-active .time {
       font-size: 52px !important;
@@ -690,75 +707,91 @@
       height: auto !important;
       line-height: 1 !important;
     }
+
     .homepage-light-mode .day,
     .dark-mode-active .day {
       font-size: 52px !important;
       height: auto !important;
       line-height: 1 !important;
     }
+
     .homepage-light-mode .top-bar-left {
       gap: 45px !important;
     }
+
     .homepage-light-mode .top-bar-right {
       gap: 30px !important;
     }
+
     .homepage-light-mode .signal-icon {
       width: 61px !important;
       height: 52px !important;
     }
+
     .homepage-light-mode .text-wrapper-19 {
       font-size: 20px !important;
       width: 39px !important;
     }
+
     .homepage-light-mode .icon-3 {
       width: 52px !important;
       height: 39px !important;
       top: 13px !important;
       left: calc(50.00% - 26px) !important;
     }
+
     .homepage-light-mode .bluetooth-icon {
       width: 24px !important;
       height: 42px !important;
     }
+
     .homepage-light-mode .wifi-icon {
       width: 46px !important;
       height: 32px !important;
     }
+
     .homepage-light-mode .wifi-path {
       width: 47px !important;
       height: 14px !important;
       left: calc(50.00% - 23.5px) !important;
     }
+
     .homepage-light-mode .wifi-path-2 {
       width: 30px !important;
       height: 12px !important;
       left: calc(50.00% - 15px) !important;
       top: 10px !important;
     }
+
     .homepage-light-mode .wifi-path-3 {
       width: 14px !important;
       height: 10px !important;
       left: calc(50.00% - 7px) !important;
       top: 22px !important;
     }
+
     .homepage-light-mode .fuel-tank-indicator {
       width: 53px !important;
       height: 58px !important;
     }
+
     .homepage-light-mode .rectangle-10 {
       width: 53px !important;
       height: 57px !important;
     }
+
     .homepage-light-mode .indicator {
       width: 16px !important;
       height: 16px !important;
       top: 5px !important;
       left: 4px !important;
     }
+
     .homepage-light-mode .vector-14 {
       width: 13px !important;
       height: 16px !important;
     }
+
     .homepage-light-mode .text-wrapper-20 {
       width: 4px !important;
       height: 10px !important;
@@ -766,14 +799,17 @@
       top: 3px !important;
       left: 4px !important;
     }
+
     .homepage-light-mode .img-2 {
       width: 52px !important;
       height: 52px !important;
     }
+
     .homepage-light-mode .sun-fill {
       width: 68px !important;
       height: 68px !important;
     }
+
     .homepage-light-mode .ellipse-8 {
       width: 78px !important;
       height: 78px !important;
@@ -1000,6 +1036,10 @@
       const [showNearbyChargers, setShowNearbyChargers] = React.useState(false);
 
       // --- VEHICLE CONTROLS ---
+      const [autopilotActive, setAutopilotActive] = React.useState(true);
+      const [highBeamActive, setHighBeamActive] = React.useState(true);
+      const [lowBeamActive, setLowBeamActive] = React.useState(true);
+      const [seatbeltActive, setSeatbeltActive] = React.useState(true);
       const [isLocked, setIsLocked] = React.useState(true);
       const [frunkOpen, setFrunkOpen] = React.useState(false);
       const [trunkOpen, setTrunkOpen] = React.useState(false);
@@ -2243,14 +2283,108 @@
       const toggleSteeringHeater = () => setSteeringHeater(!steeringHeater);
 
       // --- DRIVER CONTROLS & LOCKS ---
-      const toggleLock = () => setIsLocked(!isLocked);
-      const toggleFrunk = () => setFrunkOpen(!frunkOpen);
-      const toggleTrunk = () => setTrunkOpen(!trunkOpen);
+      const toggleLock = () => {
+        const nextVal = !isLocked;
+        setIsLocked(nextVal);
+        setActiveNotification({
+          text: nextVal ? "🔒 Doors Locked" : "🔓 Doors Unlocked",
+          type: "success",
+          duration: 4000
+        });
+        playNotificationChime();
+        setTimeout(() => {
+          setActiveNotification(null);
+        }, 4000);
+      };
+
+      const toggleFrunk = () => {
+        const nextVal = !frunkOpen;
+        setFrunkOpen(nextVal);
+        setActiveNotification({
+          text: nextVal ? "Front Trunk Opened" : "Front Trunk Closed",
+          type: "success",
+          duration: 4000
+        });
+        playNotificationChime();
+        setTimeout(() => {
+          setActiveNotification(null);
+        }, 4000);
+      };
+
+      const toggleTrunk = () => {
+        const nextVal = !trunkOpen;
+        setTrunkOpen(nextVal);
+        setActiveNotification({
+          text: nextVal ? "Rear Trunk Opened" : "Rear Trunk Closed",
+          type: "success",
+          duration: 4000
+        });
+        playNotificationChime();
+        setTimeout(() => {
+          setActiveNotification(null);
+        }, 4000);
+      };
       const toggleChargePort = () => {
         const nextVal = !chargePortOpen;
         setChargePortOpen(nextVal);
         setActiveNotification({
           text: nextVal ? "Fuel Tank Cap Opened" : "Fuel Tank Cap Closed",
+          type: "success",
+          duration: 4000
+        });
+        playNotificationChime();
+        setTimeout(() => {
+          setActiveNotification(null);
+        }, 4000);
+      };
+
+      const toggleAutopilot = () => {
+        const nextVal = !autopilotActive;
+        setAutopilotActive(nextVal);
+        setActiveNotification({
+          text: nextVal ? "Autopilot Enabled" : "Autopilot Disabled",
+          type: "success",
+          duration: 4000
+        });
+        playNotificationChime();
+        setTimeout(() => {
+          setActiveNotification(null);
+        }, 4000);
+      };
+
+      const toggleHighBeam = () => {
+        const nextVal = !highBeamActive;
+        setHighBeamActive(nextVal);
+        setActiveNotification({
+          text: nextVal ? "High Beam Enabled" : "High Beam Disabled",
+          type: "success",
+          duration: 4000
+        });
+        playNotificationChime();
+        setTimeout(() => {
+          setActiveNotification(null);
+        }, 4000);
+      };
+
+      const toggleLowBeam = () => {
+        const nextVal = !lowBeamActive;
+        setLowBeamActive(nextVal);
+        setActiveNotification({
+          text: nextVal ? "Low Beam Enabled" : "Low Beam Disabled",
+          type: "success",
+          duration: 4000
+        });
+        playNotificationChime();
+        setTimeout(() => {
+          setActiveNotification(null);
+        }, 4000);
+      };
+
+      const toggleSeatbelt = () => {
+        const nextVal = !seatbeltActive;
+        setSeatbeltActive(nextVal);
+        setActiveNotification({
+          text: nextVal ? "Seatbelt Indicator On" : "Seatbelt Indicator Off",
           type: "success",
           duration: 4000
         });
@@ -2513,35 +2647,35 @@
 
             const congestedSegments = {
               "Home": {
-                coords: [ [1.5532, 110.3328], [1.5515, 110.3298] ],
+                coords: [[1.5532, 110.3328], [1.5515, 110.3298]],
                 desc: "Jalan Rubber gridlock delay"
               },
               "Work": {
-                coords: [ [1.5532, 110.3450], [1.5535, 110.3520] ],
+                coords: [[1.5532, 110.3450], [1.5535, 110.3520]],
                 desc: "Jalan Simpang Tiga intersection delay"
               },
               "Favourite": {
-                coords: [ [1.5540, 110.3410], [1.5562, 110.3438] ],
+                coords: [[1.5540, 110.3410], [1.5562, 110.3438]],
                 desc: "Jalan Tun Abang Haji Openg congestion"
               },
               "Kuching Waterfront": {
-                coords: [ [1.5540, 110.3410], [1.5562, 110.3438] ],
+                coords: [[1.5540, 110.3410], [1.5562, 110.3438]],
                 desc: "Jalan Tun Abang Haji Openg congestion"
               },
               "Borneo Cultures Museum": {
-                coords: [ [1.5528, 110.3377], [1.5535, 110.3410] ],
+                coords: [[1.5528, 110.3377], [1.5535, 110.3410]],
                 desc: "Jalan Kulas intersection gridlock"
               },
               "Plaza Merdeka Shopping Mall": {
-                coords: [ [1.5540, 110.3410], [1.5562, 110.3438] ],
+                coords: [[1.5540, 110.3410], [1.5562, 110.3438]],
                 desc: "Jalan Tun Abang Haji Openg congestion"
               },
               "MBKS Swimming Pool & Hall": {
-                coords: [ [1.5528, 110.3377], [1.5521, 110.3400] ],
+                coords: [[1.5528, 110.3377], [1.5521, 110.3400]],
                 desc: "Jalan Nanas bottleneck delay"
               },
               "Cat Statue Monument": {
-                coords: [ [1.5562, 110.3438], [1.5575, 110.3510] ],
+                coords: [[1.5562, 110.3438], [1.5575, 110.3510]],
                 desc: "Jalan Padungan heavy congestion"
               }
             };
@@ -2977,9 +3111,8 @@
       React.useEffect(() => {
         const notificationQueue = [
           { text: "🌧️ Heavy rain, please reduce your speed.", type: "warning", duration: 6000 },
-          { text: "🔋 Eco saving mode enabled. Extends estimated range.", type: "info", duration: 5000 },
-          { text: "⚠️ Low tire pressure warning on Front Left tire.", type: "warning", duration: 6000 },
-          { text: "🚘 Autopilot lane assist active.", type: "success", duration: 5000 },
+          { text: "🚘 Autopilot disabled because Autopilot Center is not detected.", type: "warning", duration: 6000 },
+          { text: "🚘 Intelligent Cruise Control assist active.", type: "success", duration: 5000 },
           { text: "❄️ Road icing warning. Temperature is low.", type: "warning", duration: 6000 },
           { text: "⚡ EV Supercharger detected ahead in 2 km.", type: "success", duration: 5000 }
         ];
@@ -3285,15 +3418,17 @@
                 </div>
 
                 {/* Charge plug symbol indicator */}
-                <div className="status-tap-zone" onClick={triggerRecharge} title="Open Charge Port / Recharge">
-                  <div className="fuel-tank-indicator" style={{ pointerEvents: 'none' }}>
-                    <div className="indicator">
-                      <img className={`vector-14 ${isCharging ? 'pulse-active' : ''}`} src="img/vector-49.svg" style={{ filter: isDarkMode ? 'invert(1)' : 'none' }} />
-                      <div className="text-wrapper-20" style={{ color: isCharging ? '#02ff15' : (isDarkMode ? '#ffffff' : '#1e1e1e') }}>{isCharging ? "⚡" : "!"}</div>
+                {chargePortOpen && (
+                  <div className="status-tap-zone" onClick={triggerRecharge} title="Open Charge Port / Recharge">
+                    <div className="fuel-tank-indicator" style={{ pointerEvents: 'none' }}>
+                      <div className="indicator">
+                        <img className={`vector-14 ${isCharging ? 'pulse-active' : ''}`} src="img/vector-49.svg" style={{ filter: isDarkMode ? 'invert(1)' : 'none' }} />
+                        <div className="text-wrapper-20" style={{ color: isCharging ? '#02ff15' : (isDarkMode ? '#ffffff' : '#1e1e1e') }}>{isCharging ? "⚡" : "!"}</div>
+                      </div>
+                      <img className="rectangle-10" src="img/rectangle.png" style={{ filter: (isCharging ? 'hue-rotate(90deg) saturate(1.5) ' : '') + (isDarkMode ? 'invert(1) brightness(1.2)' : 'none') }} />
                     </div>
-                    <img className="rectangle-10" src="img/rectangle.png" style={{ filter: (isCharging ? 'hue-rotate(90deg) saturate(1.5) ' : '') + (isDarkMode ? 'invert(1) brightness(1.2)' : 'none') }} />
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="top-bar-right">
@@ -4338,9 +4473,9 @@
                     marginBottom: '25px'
                   }} className="custom-scrollbar">
 
-                     {/* ⚠️ Pulse Warning Alert for Low/Critical Battery */}
-                     {battery <= 20 && (
-                      <div 
+                    {/* ⚠️ Pulse Warning Alert for Low/Critical Battery */}
+                    {battery <= 20 && (
+                      <div
                         onClick={() => {
                           if (Math.round(battery) <= 0) {
                             setShowSosModal(true);
@@ -4365,7 +4500,7 @@
                         <div style={{ textAlign: 'left' }}>
                           <h4 style={{ margin: 0, fontSize: '24px', fontWeight: '800', color: '#ff3b30', fontFamily: 'Montserrat, sans-serif' }}>Critical Battery Alert</h4>
                           <p style={{ margin: '6px 0 0 0', fontSize: '20px', color: isDarkMode ? '#ffd1d1' : '#555', lineHeight: '1.4' }}>
-                            {Math.round(battery) <= 0 
+                            {Math.round(battery) <= 0
                               ? "Battery is at 0%. Remaining range is depleted! Tap here to summon roadside assistance immediately."
                               : `Battery is at ${Math.round(battery)}%. Recommending and auto-routing to the nearest charging station: **Satok Bridge Hub** (${getStationStats(4.7, 28).batteryRemaining}% battery remaining upon arrival).`
                             }
@@ -4465,9 +4600,9 @@
                                 // Clean up custom pins and duration markers
                                 fullscreenMarkersRef.current = fullscreenMarkersRef.current.filter(mk => {
                                   const className = mk.options?.icon?.options?.className || '';
-                                  if (mk.options.title === 'QuickPin' || 
-                                      mk.options.title === 'SearchPin' || 
-                                      className.includes('route-time-label')) {
+                                  if (mk.options.title === 'QuickPin' ||
+                                    mk.options.title === 'SearchPin' ||
+                                    className.includes('route-time-label')) {
                                     map.removeLayer(mk);
                                     return false;
                                   }
@@ -6286,12 +6421,12 @@
                       borderRight: isDarkMode ? '1.5px solid rgba(255,255,255,0.06)' : '1.5px solid #e9ecef'
                     }}>
                       {/* Perspective white Tesla Model */}
-                      <div style={{ position: 'relative', width: '90%', display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '60px' }}>
+                      <div style={{ position: 'relative', width: '90%', display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '20px' }}>
                         <img
                           src="img/white-tesla-model.png"
                           style={{
                             width: '100%',
-                            maxWidth: '750px',
+                            maxWidth: '640px',
                             filter: mirrorsFolded ? 'brightness(0.9) saturate(0.9) blur(1px)' : 'none',
                             transform: mirrorsFolded ? 'scale(0.95)' : 'none',
                             transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -6301,8 +6436,8 @@
                         {/* Mirror Reflection Effect */}
                         <div style={{
                           width: '100%',
-                          maxWidth: '750px',
-                          height: '200px',
+                          maxWidth: '640px',
+                          height: '100px',
                           backgroundImage: "url('img/white-tesla-model.png')",
                           backgroundSize: '100% auto',
                           backgroundRepeat: 'no-repeat',
@@ -6350,7 +6485,7 @@
                         position: 'absolute',
                         bottom: '80px',
                         left: '30px',
-                        width: '820px',
+                        width: '1140px',
                         height: '520px',
                         backgroundColor: isDarkMode ? 'rgba(30, 31, 45, 0.9)' : 'rgba(248, 249, 250, 0.95)',
                         backdropFilter: 'blur(15px)',
@@ -6393,7 +6528,125 @@
                                   {trunkOpen ? "Close Trunk" : "Open Trunk"}
                                 </button>
                                 <button onClick={toggleChargePort} style={{ flex: 1, padding: '26px', borderRadius: '18px', border: 'none', fontWeight: 'bold', cursor: 'pointer', backgroundColor: chargePortOpen ? '#ff9b00' : '#495057', color: 'white', fontSize: '28px' }}>
-                                  {chargePortOpen ? "🔌 Close Port" : "🔌 Open Port"}
+                                  {chargePortOpen ? "Close Fuel Cap" : "Open Fuel Cap"}
+                                </button>
+                              </div>
+                              <div style={{ display: 'flex', gap: '20px' }}>
+                                <button onClick={toggleAutopilot} style={{
+                                  flex: 1,
+                                  padding: '26px',
+                                  borderRadius: '18px',
+                                  border: 'none',
+                                  fontWeight: 'bold',
+                                  cursor: 'pointer',
+                                  backgroundColor: autopilotActive ? '#2f80ed' : '#495057',
+                                  color: 'white',
+                                  fontSize: '28px',
+                                  transition: 'all 0.3s',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '12px'
+                                }}>
+                                  <div style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '50%',
+                                    background: autopilotActive
+                                      ? 'radial-gradient(circle at 35% 35%, #a3daff 0%, #2f80ed 70%, #124d9c 100%)'
+                                      : 'radial-gradient(circle at 35% 35%, #ffffff 0%, #adb5bd 70%, #495057 100%)',
+                                    boxShadow: autopilotActive ? '0 0 12px rgba(47,128,237,0.8)' : 'none',
+                                    transition: 'all 0.3s ease'
+                                  }} />
+                                  {autopilotActive ? "Disable Autopilot" : "Enable Autopilot"}
+                                </button>
+                              </div>
+                              <div style={{ display: 'flex', gap: '20px' }}>
+                                <button onClick={toggleHighBeam} style={{
+                                  flex: 1,
+                                  padding: '26px',
+                                  borderRadius: '18px',
+                                  border: 'none',
+                                  fontWeight: 'bold',
+                                  cursor: 'pointer',
+                                  backgroundColor: highBeamActive ? '#2b8a3e' : '#495057',
+                                  color: 'white',
+                                  fontSize: '28px',
+                                  transition: 'all 0.3s',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '12px'
+                                }}>
+                                  <div style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '50%',
+                                    background: highBeamActive
+                                      ? 'radial-gradient(circle at 35% 35%, #8effc3 0%, #2b8a3e 70%, #175424 100%)'
+                                      : 'radial-gradient(circle at 35% 35%, #ffffff 0%, #adb5bd 70%, #495057 100%)',
+                                    boxShadow: highBeamActive ? '0 0 12px rgba(43,138,62,0.8)' : 'none',
+                                    transition: 'all 0.3s ease'
+                                  }} />
+                                  {highBeamActive ? "Disable High Beam" : "Enable High Beam"}
+                                </button>
+                                <button onClick={toggleLowBeam} style={{
+                                  flex: 1,
+                                  padding: '26px',
+                                  borderRadius: '18px',
+                                  border: 'none',
+                                  fontWeight: 'bold',
+                                  cursor: 'pointer',
+                                  backgroundColor: lowBeamActive ? '#2b8a3e' : '#495057',
+                                  color: 'white',
+                                  fontSize: '28px',
+                                  transition: 'all 0.3s',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '12px'
+                                }}>
+                                  <div style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '50%',
+                                    background: lowBeamActive
+                                      ? 'radial-gradient(circle at 35% 35%, #8effc3 0%, #2b8a3e 70%, #175424 100%)'
+                                      : 'radial-gradient(circle at 35% 35%, #ffffff 0%, #adb5bd 70%, #495057 100%)',
+                                    boxShadow: lowBeamActive ? '0 0 12px rgba(43,138,62,0.8)' : 'none',
+                                    transition: 'all 0.3s ease'
+                                  }} />
+                                  {lowBeamActive ? "Disable Low Beam" : "Enable Low Beam"}
+                                </button>
+                              </div>
+                              <div style={{ display: 'flex', gap: '20px' }}>
+                                <button onClick={toggleSeatbelt} style={{
+                                  flex: 1,
+                                  padding: '26px',
+                                  borderRadius: '18px',
+                                  border: 'none',
+                                  fontWeight: 'bold',
+                                  cursor: 'pointer',
+                                  backgroundColor: seatbeltActive ? '#e03131' : '#495057',
+                                  color: 'white',
+                                  fontSize: '28px',
+                                  transition: 'all 0.3s',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '12px'
+                                }}>
+                                  <div style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '50%',
+                                    background: seatbeltActive
+                                      ? 'radial-gradient(circle at 35% 35%, #ff8787 0%, #e03131 70%, #9c1c1c 100%)'
+                                      : 'radial-gradient(circle at 35% 35%, #ffffff 0%, #adb5bd 70%, #495057 100%)',
+                                    boxShadow: seatbeltActive ? '0 0 12px rgba(224,49,49,0.8)' : 'none',
+                                    transition: 'all 0.3s ease'
+                                  }} />
+                                  {seatbeltActive ? "Seatbelt Indicator On" : "Seatbelt Indicator Off"}
                                 </button>
                               </div>
                               <div>
@@ -6662,86 +6915,166 @@
                       {/* Indicators List */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '35px', width: '100%', paddingLeft: '20px', marginTop: '40px' }}>
                         {/* 1. High Beam */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', opacity: highBeamActive ? 1 : 0.6, transition: 'all 0.3s ease' }}>
                           <div style={{
                             width: '100px',
                             height: '100px',
                             borderRadius: '50%',
-                            backgroundColor: isDarkMode ? 'rgba(43, 138, 62, 0.15)' : '#e6fcf5',
-                            border: '3.5px solid #2b8a3e',
+                            backgroundColor: highBeamActive
+                              ? (isDarkMode ? 'rgba(43, 138, 62, 0.15)' : '#e6fcf5')
+                              : (isDarkMode ? 'rgba(134, 142, 150, 0.15)' : '#f1f3f5'),
+                            border: highBeamActive ? '3.5px solid #2b8a3e' : '3.5px solid #868e96',
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
-                            boxShadow: '0 8px 18px rgba(43,138,62,0.15)'
+                            boxShadow: highBeamActive ? '0 8px 18px rgba(43,138,62,0.15)' : 'none',
+                            transition: 'all 0.3s ease'
                           }}>
-                            <span style={{ fontSize: '46px' }}>🟢</span>
+                            <div style={{
+                              width: '50px',
+                              height: '50px',
+                              borderRadius: '50%',
+                              background: highBeamActive
+                                ? 'radial-gradient(circle at 35% 35%, #8effc3 0%, #2b8a3e 70%, #175424 100%)'
+                                : (isDarkMode ? 'radial-gradient(circle at 35% 35%, #ffffff 0%, #555555 70%, #222222 100%)' : 'radial-gradient(circle at 35% 35%, #ffffff 0%, #adb5bd 70%, #495057 100%)'),
+                              boxShadow: highBeamActive ? '0 8px 18px rgba(43,138,62,0.45)' : 'none',
+                              transition: 'all 0.3s ease',
+                              opacity: highBeamActive ? 1 : 0.45
+                            }} />
                           </div>
                           <div style={{ textAlign: 'left' }}>
                             <div style={{ fontSize: '27px', color: '#868e96', fontWeight: '500' }}>High Beam</div>
-                            <strong style={{ fontSize: '36px', color: '#2b8a3e', fontFamily: 'Montserrat, sans-serif' }}>Active</strong>
+                            <strong style={{
+                              fontSize: '36px',
+                              color: highBeamActive ? '#2b8a3e' : '#868e96',
+                              fontFamily: 'Montserrat, sans-serif',
+                              transition: 'all 0.3s ease'
+                            }}>
+                              {highBeamActive ? "Active" : "Inactive"}
+                            </strong>
                           </div>
                         </div>
 
                         {/* 2. Low Beam */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', opacity: lowBeamActive ? 1 : 0.6, transition: 'all 0.3s ease' }}>
                           <div style={{
                             width: '100px',
                             height: '100px',
                             borderRadius: '50%',
-                            backgroundColor: isDarkMode ? 'rgba(43, 138, 62, 0.15)' : '#e6fcf5',
-                            border: '3.5px solid #2b8a3e',
+                            backgroundColor: lowBeamActive
+                              ? (isDarkMode ? 'rgba(43, 138, 62, 0.15)' : '#e6fcf5')
+                              : (isDarkMode ? 'rgba(134, 142, 150, 0.15)' : '#f1f3f5'),
+                            border: lowBeamActive ? '3.5px solid #2b8a3e' : '3.5px solid #868e96',
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
-                            boxShadow: '0 8px 18px rgba(43,138,62,0.15)'
+                            boxShadow: lowBeamActive ? '0 8px 18px rgba(43,138,62,0.15)' : 'none',
+                            transition: 'all 0.3s ease'
                           }}>
-                            <span style={{ fontSize: '46px' }}>🟢</span>
+                            <div style={{
+                              width: '50px',
+                              height: '50px',
+                              borderRadius: '50%',
+                              background: lowBeamActive
+                                ? 'radial-gradient(circle at 35% 35%, #8effc3 0%, #2b8a3e 70%, #175424 100%)'
+                                : (isDarkMode ? 'radial-gradient(circle at 35% 35%, #ffffff 0%, #555555 70%, #222222 100%)' : 'radial-gradient(circle at 35% 35%, #ffffff 0%, #adb5bd 70%, #495057 100%)'),
+                              boxShadow: lowBeamActive ? '0 8px 18px rgba(43,138,62,0.45)' : 'none',
+                              transition: 'all 0.3s ease',
+                              opacity: lowBeamActive ? 1 : 0.45
+                            }} />
                           </div>
                           <div style={{ textAlign: 'left' }}>
                             <div style={{ fontSize: '27px', color: '#868e96', fontWeight: '500' }}>Low Beam</div>
-                            <strong style={{ fontSize: '36px', color: '#2b8a3e', fontFamily: 'Montserrat, sans-serif' }}>Active</strong>
+                            <strong style={{
+                              fontSize: '36px',
+                              color: lowBeamActive ? '#2b8a3e' : '#868e96',
+                              fontFamily: 'Montserrat, sans-serif',
+                              transition: 'all 0.3s ease'
+                            }}>
+                              {lowBeamActive ? "Active" : "Inactive"}
+                            </strong>
                           </div>
                         </div>
 
                         {/* 3. Autopilot */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', opacity: autopilotActive ? 1 : 0.6, transition: 'all 0.3s ease' }}>
                           <div style={{
                             width: '100px',
                             height: '100px',
                             borderRadius: '50%',
-                            backgroundColor: isDarkMode ? 'rgba(47, 128, 237, 0.15)' : '#edf2ff',
-                            border: '3.5px solid #2f80ed',
+                            backgroundColor: autopilotActive
+                              ? (isDarkMode ? 'rgba(47, 128, 237, 0.15)' : '#edf2ff')
+                              : (isDarkMode ? 'rgba(134, 142, 150, 0.15)' : '#f1f3f5'),
+                            border: autopilotActive ? '3.5px solid #2f80ed' : '3.5px solid #868e96',
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
-                            boxShadow: '0 8px 18px rgba(47,128,237,0.15)'
+                            boxShadow: autopilotActive ? '0 8px 18px rgba(47,128,237,0.15)' : 'none',
+                            transition: 'all 0.3s ease'
                           }}>
-                            <span style={{ fontSize: '46px' }}>🔵</span>
+                            <div style={{
+                              width: '50px',
+                              height: '50px',
+                              borderRadius: '50%',
+                              background: autopilotActive
+                                ? 'radial-gradient(circle at 35% 35%, #a3daff 0%, #2f80ed 70%, #124d9c 100%)'
+                                : (isDarkMode ? 'radial-gradient(circle at 35% 35%, #ffffff 0%, #555555 70%, #222222 100%)' : 'radial-gradient(circle at 35% 35%, #ffffff 0%, #adb5bd 70%, #495057 100%)'),
+                              boxShadow: autopilotActive ? '0 8px 18px rgba(47,128,237,0.45)' : 'none',
+                              transition: 'all 0.3s ease',
+                              opacity: autopilotActive ? 1 : 0.45
+                            }} />
                           </div>
                           <div style={{ textAlign: 'left' }}>
                             <div style={{ fontSize: '27px', color: '#868e96', fontWeight: '500' }}>Autopilot</div>
-                            <strong style={{ fontSize: '36px', color: '#2f80ed', fontFamily: 'Montserrat, sans-serif' }}>Active</strong>
+                            <strong style={{
+                              fontSize: '36px',
+                              color: autopilotActive ? '#2f80ed' : '#868e96',
+                              fontFamily: 'Montserrat, sans-serif',
+                              transition: 'all 0.3s ease'
+                            }}>
+                              {autopilotActive ? "Active" : "Inactive"}
+                            </strong>
                           </div>
                         </div>
 
                         {/* 4. Seatbelt warning */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', opacity: seatbeltActive ? 1 : 0.6, transition: 'all 0.3s ease' }}>
                           <div style={{
                             width: '100px',
                             height: '100px',
                             borderRadius: '50%',
-                            backgroundColor: isDarkMode ? 'rgba(255, 59, 48, 0.15)' : '#ffebeb',
-                            border: '3.5px solid #ff3b30',
+                            backgroundColor: seatbeltActive
+                              ? (isDarkMode ? 'rgba(255, 59, 48, 0.15)' : '#ffebeb')
+                              : (isDarkMode ? 'rgba(134, 142, 150, 0.15)' : '#f1f3f5'),
+                            border: seatbeltActive ? '3.5px solid #ff3b30' : '3.5px solid #868e96',
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
-                            boxShadow: '0 8px 18px rgba(255,59,48,0.15)'
+                            boxShadow: seatbeltActive ? '0 8px 18px rgba(255,59,48,0.15)' : 'none',
+                            transition: 'all 0.3s ease'
                           }}>
-                            <span style={{ fontSize: '46px' }}>🔴</span>
+                            <div style={{
+                              width: '50px',
+                              height: '50px',
+                              borderRadius: '50%',
+                              background: seatbeltActive
+                                ? 'radial-gradient(circle at 35% 35%, #ff8787 0%, #e03131 70%, #9c1c1c 100%)'
+                                : (isDarkMode ? 'radial-gradient(circle at 35% 35%, #ffffff 0%, #555555 70%, #222222 100%)' : 'radial-gradient(circle at 35% 35%, #ffffff 0%, #adb5bd 70%, #495057 100%)'),
+                              boxShadow: seatbeltActive ? '0 8px 18px rgba(255,59,48,0.45)' : 'none',
+                              transition: 'all 0.3s ease',
+                              opacity: seatbeltActive ? 1 : 0.45
+                            }} />
                           </div>
                           <div style={{ textAlign: 'left' }}>
                             <div style={{ fontSize: '27px', color: '#868e96', fontWeight: '500' }}>Seatbelt</div>
-                            <strong style={{ fontSize: '36px', color: '#ff3b30', fontFamily: 'Montserrat, sans-serif' }}>Active</strong>
+                            <strong style={{
+                              fontSize: '36px',
+                              color: seatbeltActive ? '#ff3b30' : '#868e96',
+                              fontFamily: 'Montserrat, sans-serif',
+                              transition: 'all 0.3s ease'
+                            }}>
+                              {seatbeltActive ? "Active" : "Inactive"}
+                            </strong>
                           </div>
                         </div>
                       </div>
@@ -7330,11 +7663,11 @@
                       {/* Trunk toggle button */}
                       <div className="trunk">Trunk</div>
                       <div className="open-button interactive-button-hover" style={{ backgroundColor: frunkOpen ? '#a1cfff' : '#c0ddff' }} onClick={toggleFrunk}></div>
-                      <div className="open" style={{ color: frunkOpen ? '#0066cc' : '#6c6c6c' }} onClick={toggleFrunk}>{frunkOpen ? "Open" : "Closed"}</div>
+                      <div className="open" style={{ color: frunkOpen ? (isDarkMode ? '#a1cfff' : '#0066cc') : (isDarkMode ? '#b0b3c2' : '#6c6c6c') }} onClick={toggleFrunk}>{frunkOpen ? "Open" : "Closed"}</div>
 
                       {/* Frunk toggle button */}
                       <div className="open-button-2 interactive-button-hover" style={{ backgroundColor: trunkOpen ? '#a1cfff' : '#c0ddff' }} onClick={toggleTrunk}></div>
-                      <div className="open-2" style={{ color: trunkOpen ? '#0066cc' : '#6c6c6c' }} onClick={toggleTrunk}>{trunkOpen ? "Open" : "Closed"}</div>
+                      <div className="open-2" style={{ color: trunkOpen ? (isDarkMode ? '#a1cfff' : '#0066cc') : (isDarkMode ? '#b0b3c2' : '#6c6c6c') }} onClick={toggleTrunk}>{trunkOpen ? "Open" : "Closed"}</div>
                       <div className="frunk">Frunk</div>
 
                       {/* Restored static string format without cogs */}
@@ -7350,7 +7683,7 @@
                       <div className="mileage-statistics">Mileage Stats</div>
 
                       {/* Car Locks banner (Restored clean string format) */}
-                      <div className="frunk-2" style={{ color: isLocked ? '#6f6666' : '#2b8a3e' }}>
+                      <div className="frunk-2" style={{ color: isLocked ? (isDarkMode ? '#b0b3c2' : '#6f6666') : '#2b8a3e' }}>
                         {isLocked ? "Car Locked" : "Car Unlocked"}
                       </div>
                     </div>
@@ -7625,24 +7958,131 @@
             )}
 
             {/* --- VERTICAL SIDEBAR MENU (left: 2560px) --- */}
-            <div className="eco-button interactive-button-hover" style={{ backgroundColor: driveMode === 'eco' ? '#2b8a3e' : (isDarkMode ? '#383942' : '#464646'), borderLeft: isDarkMode ? '1.5px solid rgba(255, 255, 255, 0.05)' : 'none' }} onClick={() => { setDriveMode('eco'); setEnergySavingMode(true); }}>
-              <div className="text-wrapper-17" style={{ fontWeight: driveMode === 'eco' ? '800' : '400', color: '#ffffff' }}>Eco</div>
+            <div className="eco-button interactive-button-hover" style={{
+              background: driveMode === 'eco'
+                ? 'linear-gradient(180deg, #3aa655 0%, #2b8a3e 60%, #165c24 100%)'
+                : (isDarkMode ? 'linear-gradient(180deg, #2f303a 0%, #202129 60%, #14151b 100%)' : 'linear-gradient(180deg, #4e505d 0%, #3a3b45 60%, #26272e 100%)'),
+              border: '1.5px solid rgba(0, 0, 0, 0.4)',
+              boxShadow: 'inset 0 3px 0 rgba(255, 255, 255, 0.15), inset 0 -3px 0 rgba(0, 0, 0, 0.5), inset 3px 0 0 rgba(255, 255, 255, 0.1), inset -3px 0 0 rgba(0, 0, 0, 0.4), 0 10px 25px rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '15px'
+            }} onClick={() => { setDriveMode('eco'); setEnergySavingMode(true); }}>
+              {/* LED Indicator Light */}
+              <div style={{
+                width: '18px',
+                height: '18px',
+                borderRadius: '50%',
+                background: driveMode === 'eco'
+                  ? 'radial-gradient(circle at 35% 35%, #ffffff 0%, #31d33d 50%, #155a1a 100%)'
+                  : 'radial-gradient(circle at 35% 35%, #555555 0%, #222222 70%, #111111 100%)',
+                boxShadow: driveMode === 'eco' ? '0 0 14px #31d33d, inset 0 1px 2px rgba(255, 255, 255, 0.5)' : 'none',
+                border: '1px solid rgba(0, 0, 0, 0.55)',
+                transition: 'all 0.3s ease'
+              }} />
+              <div className="text-wrapper-17" style={{
+                fontWeight: driveMode === 'eco' ? '900' : '600',
+                color: '#ffffff',
+                textShadow: '0 -2px 0 rgba(0, 0, 0, 0.8), 0 1px 1px rgba(255, 255, 255, 0.25)'
+              }}>Eco</div>
             </div>
 
-            <div className="sport-button interactive-button-hover" style={{ backgroundColor: driveMode === 'sport' ? '#e03131' : (isDarkMode ? '#383942' : '#464646'), borderLeft: isDarkMode ? '1.5px solid rgba(255, 255, 255, 0.05)' : 'none' }} onClick={() => { setDriveMode('sport'); setEnergySavingMode(false); }}>
-              <div className="text-wrapper-17" style={{ fontWeight: driveMode === 'sport' ? '800' : '400', color: '#ffffff' }}>Sport</div>
+            <div className="sport-button interactive-button-hover" style={{
+              background: driveMode === 'sport'
+                ? 'linear-gradient(180deg, #ff4d4d 0%, #e03131 60%, #901a1a 100%)'
+                : (isDarkMode ? 'linear-gradient(180deg, #2f303a 0%, #202129 60%, #14151b 100%)' : 'linear-gradient(180deg, #4e505d 0%, #3a3b45 60%, #26272e 100%)'),
+              border: '1.5px solid rgba(0, 0, 0, 0.4)',
+              boxShadow: 'inset 0 3px 0 rgba(255, 255, 255, 0.15), inset 0 -3px 0 rgba(0, 0, 0, 0.5), inset 3px 0 0 rgba(255, 255, 255, 0.1), inset -3px 0 0 rgba(0, 0, 0, 0.4), 0 10px 25px rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '15px'
+            }} onClick={() => { setDriveMode('sport'); setEnergySavingMode(false); }}>
+              {/* LED Indicator Light */}
+              <div style={{
+                width: '18px',
+                height: '18px',
+                borderRadius: '50%',
+                background: driveMode === 'sport'
+                  ? 'radial-gradient(circle at 35% 35%, #ffffff 0%, #ff3b30 50%, #901a1a 100%)'
+                  : 'radial-gradient(circle at 35% 35%, #555555 0%, #222222 70%, #111111 100%)',
+                boxShadow: driveMode === 'sport' ? '0 0 14px #ff3b30, inset 0 1px 2px rgba(255, 255, 255, 0.5)' : 'none',
+                border: '1px solid rgba(0, 0, 0, 0.55)',
+                transition: 'all 0.3s ease'
+              }} />
+              <div className="text-wrapper-17" style={{
+                fontWeight: driveMode === 'sport' ? '900' : '600',
+                color: '#ffffff',
+                textShadow: '0 -2px 0 rgba(0, 0, 0, 0.8), 0 1px 1px rgba(255, 255, 255, 0.25)'
+              }}>Sport</div>
             </div>
 
-            <div className="compact-button interactive-button-hover" style={{ backgroundColor: driveMode === 'compact' ? '#1e5f8f' : (isDarkMode ? '#383942' : '#464646'), borderLeft: isDarkMode ? '1.5px solid rgba(255, 255, 255, 0.05)' : 'none' }} onClick={() => { setDriveMode('compact'); setEnergySavingMode(false); }}>
-              <div className="text-wrapper-17" style={{ fontWeight: driveMode === 'compact' ? '800' : '400', color: '#ffffff' }}>Compact</div>
+            <div className="compact-button interactive-button-hover" style={{
+              background: driveMode === 'compact'
+                ? 'linear-gradient(180deg, #2b7bc4 0%, #1e5f8f 60%, #0f3552 100%)'
+                : (isDarkMode ? 'linear-gradient(180deg, #2f303a 0%, #202129 60%, #14151b 100%)' : 'linear-gradient(180deg, #4e505d 0%, #3a3b45 60%, #26272e 100%)'),
+              border: '1.5px solid rgba(0, 0, 0, 0.4)',
+              boxShadow: 'inset 0 3px 0 rgba(255, 255, 255, 0.15), inset 0 -3px 0 rgba(0, 0, 0, 0.5), inset 3px 0 0 rgba(255, 255, 255, 0.1), inset -3px 0 0 rgba(0, 0, 0, 0.4), 0 10px 25px rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '15px'
+            }} onClick={() => { setDriveMode('compact'); setEnergySavingMode(false); }}>
+              {/* LED Indicator Light */}
+              <div style={{
+                width: '18px',
+                height: '18px',
+                borderRadius: '50%',
+                background: driveMode === 'compact'
+                  ? 'radial-gradient(circle at 35% 35%, #ffffff 0%, #2f80ed 50%, #0d385a 100%)'
+                  : 'radial-gradient(circle at 35% 35%, #555555 0%, #222222 70%, #111111 100%)',
+                boxShadow: driveMode === 'compact' ? '0 0 14px #2f80ed, inset 0 1px 2px rgba(255, 255, 255, 0.5)' : 'none',
+                border: '1px solid rgba(0, 0, 0, 0.55)',
+                transition: 'all 0.3s ease'
+              }} />
+              <div className="text-wrapper-17" style={{
+                fontWeight: driveMode === 'compact' ? '900' : '600',
+                color: '#ffffff',
+                textShadow: '0 -2px 0 rgba(0, 0, 0, 0.8), 0 1px 1px rgba(255, 255, 255, 0.25)'
+              }}>Compact</div>
             </div>
 
-            <div className="volume-up interactive-button-hover" style={{ backgroundColor: isDarkMode ? '#383942' : '#464646', borderLeft: isDarkMode ? '1.5px solid rgba(255, 255, 255, 0.05)' : 'none' }} onClick={() => adjustVolume(5)}>
-              <div className="text-wrapper-18" style={{ color: '#ffffff' }}>Volume<br />Up</div>
+            <div className="volume-up interactive-button-hover" style={{
+              background: isDarkMode ? 'linear-gradient(180deg, #2f303a 0%, #202129 60%, #14151b 100%)' : 'linear-gradient(180deg, #4e505d 0%, #3a3b45 60%, #26272e 100%)',
+              border: '1.5px solid rgba(0, 0, 0, 0.4)',
+              boxShadow: 'inset 0 3px 0 rgba(255, 255, 255, 0.15), inset 0 -3px 0 rgba(0, 0, 0, 0.5), inset 3px 0 0 rgba(255, 255, 255, 0.1), inset -3px 0 0 rgba(0, 0, 0, 0.4), 0 10px 25px rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '15px'
+            }} onClick={() => adjustVolume(5)}>
+              <div className="text-wrapper-18" style={{
+                fontWeight: '600',
+                color: '#ffffff',
+                textShadow: '0 -2px 0 rgba(0, 0, 0, 0.8), 0 1px 1px rgba(255, 255, 255, 0.25)'
+              }}>Volume<br />Up</div>
             </div>
 
-            <div className="volume-down interactive-button-hover" style={{ backgroundColor: isDarkMode ? '#383942' : '#464646', borderLeft: isDarkMode ? '1.5px solid rgba(255, 255, 255, 0.05)' : 'none' }} onClick={() => adjustVolume(-5)}>
-              <div className="text-wrapper-18" style={{ color: '#ffffff' }}>Volume<br />Down</div>
+            <div className="volume-down interactive-button-hover" style={{
+              background: isDarkMode ? 'linear-gradient(180deg, #2f303a 0%, #202129 60%, #14151b 100%)' : 'linear-gradient(180deg, #4e505d 0%, #3a3b45 60%, #26272e 100%)',
+              border: '1.5px solid rgba(0, 0, 0, 0.4)',
+              boxShadow: 'inset 0 3px 0 rgba(255, 255, 255, 0.15), inset 0 -3px 0 rgba(0, 0, 0, 0.5), inset 3px 0 0 rgba(255, 255, 255, 0.1), inset -3px 0 0 rgba(0, 0, 0, 0.4), 0 10px 25px rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '15px'
+            }} onClick={() => adjustVolume(-5)}>
+              <div className="text-wrapper-18" style={{
+                fontWeight: '600',
+                color: '#ffffff',
+                textShadow: '0 -2px 0 rgba(0, 0, 0, 0.8), 0 1px 1px rgba(255, 255, 255, 0.25)'
+              }}>Volume<br />Down</div>
             </div>
 
             {/* --- BOTTOM DASHBOARD BAR --- */}
