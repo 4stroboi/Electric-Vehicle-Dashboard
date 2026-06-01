@@ -817,24 +817,52 @@
 
     /* MY VEHICLE SCREEN ANIMATIONS */
     @keyframes update-pulse {
-      0% { transform: scale(0.96); opacity: 0.8; }
-      50% { transform: scale(1.04); opacity: 1; }
-      100% { transform: scale(0.96); opacity: 0.8; }
+      0% {
+        transform: scale(0.96);
+        opacity: 0.8;
+      }
+
+      50% {
+        transform: scale(1.04);
+        opacity: 1;
+      }
+
+      100% {
+        transform: scale(0.96);
+        opacity: 0.8;
+      }
     }
+
     @keyframes ripple-expand {
-      0% { transform: scale(0.7); opacity: 0.6; }
-      100% { transform: scale(1.4); opacity: 0; }
+      0% {
+        transform: scale(0.7);
+        opacity: 0.6;
+      }
+
+      100% {
+        transform: scale(1.4);
+        opacity: 0;
+      }
     }
+
     @keyframes spin-slow {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
     }
+
     .pulsing-update-badge {
       animation: update-pulse 2s infinite ease-in-out;
     }
+
     .radar-ripple-1 {
       animation: ripple-expand 3.5s infinite linear;
     }
+
     .radar-ripple-2 {
       animation: ripple-expand 3.5s infinite linear;
       animation-delay: 1.75s;
@@ -1282,11 +1310,11 @@
       const runSystemUpdate = () => {
         setUpdatePhase("checking");
         setUpdateProgress(0);
-        
+
         // Step 1: Checking (1.5s)
         setTimeout(() => {
           setUpdatePhase("downloading");
-          
+
           // Step 2: Downloading (animate progress 0 to 100 over 4s)
           let downloadProgress = 0;
           const downloadInterval = setInterval(() => {
@@ -1295,7 +1323,7 @@
               clearInterval(downloadInterval);
               setUpdateProgress(100);
               setUpdatePhase("installing");
-              
+
               // Step 3: Installing (animate progress 0 to 100 over 3s)
               let installProgress = 0;
               const installInterval = setInterval(() => {
@@ -1304,13 +1332,13 @@
                   clearInterval(installInterval);
                   setUpdateProgress(100);
                   setUpdatePhase("rebooting");
-                  
+
                   // Step 4: Rebooting (2s)
                   setTimeout(() => {
                     setUpdatePhase("completed");
                     setSystemVersion("Tapu Bulu 1.2.1.3");
                     setIsUpdateAvailable(false);
-                    
+
                     // Trigger success chime and notification
                     if (typeof playNotificationChime === 'function') {
                       playNotificationChime();
@@ -1323,18 +1351,18 @@
                     setTimeout(() => {
                       setActiveNotification(null);
                     }, 5000);
-                    
+
                   }, 2000);
                 } else {
                   setUpdateProgress(installProgress);
                 }
               }, 300);
-              
+
             } else {
               setUpdateProgress(downloadProgress);
             }
           }, 200);
-          
+
         }, 1500);
       };
 
@@ -5194,7 +5222,7 @@
                                 fontFamily: 'Montserrat, sans-serif'
                               }}
                             >
-                              <span>🚀</span> {(isSimulatingNav && simulatingStationId === 1) ? "STOP SIMULATED NAVIGATION" : "START SIMULATED NAVIGATION"}
+                              <span></span> {(isSimulatingNav && simulatingStationId === 1) ? "STOP NAVIGATION" : "START NAVIGATION"}
                             </button>
                           )}
                         </div>
@@ -5445,7 +5473,7 @@
                                 fontFamily: 'Montserrat, sans-serif'
                               }}
                             >
-                              <span>🚀</span> {(isSimulatingNav && simulatingStationId === 2) ? "STOP SIMULATED NAVIGATION" : "START SIMULATED NAVIGATION"}
+                              <span></span> {(isSimulatingNav && simulatingStationId === 2) ? "STOP NAVIGATION" : "START NAVIGATION"}
                             </button>
                           )}
                         </div>
@@ -5695,7 +5723,7 @@
                                 fontFamily: 'Montserrat, sans-serif'
                               }}
                             >
-                              <span>🚀</span> {(isSimulatingNav && simulatingStationId === 3) ? "STOP SIMULATED NAVIGATION" : "START SIMULATED NAVIGATION"}
+                              <span></span> {(isSimulatingNav && simulatingStationId === 3) ? "STOP NAVIGATION" : "START NAVIGATION"}
                             </button>
                           )}
                         </div>
@@ -5967,7 +5995,7 @@
 
                     {/* Sub-body layout (50/50 split) */}
                     <div style={{ display: 'flex', flex: 1, gap: '40px', height: 'calc(100% - 130px)', minHeight: 0 }}>
-                      
+
                       {/* Left Column: Top-down perspective view with live tire pressures */}
                       <div style={{
                         flex: 1,
@@ -5982,9 +6010,9 @@
                         boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.05)',
                         border: isDarkMode ? '1.5px solid rgba(255,255,255,0.06)' : '1.5px solid rgba(0,0,0,0.04)'
                       }}>
-                        
+
                         {/* Interactive Clicking Layer over the entire container for Tire Pressure Modal */}
-                        <div 
+                        <div
                           onClick={() => setIsTireModalOpen(true)}
                           style={{
                             position: 'absolute',
@@ -5992,7 +6020,7 @@
                             height: '100%',
                             cursor: 'pointer',
                             zIndex: 5
-                          }} 
+                          }}
                           title="Click to Adjust Tire Pressures"
                         />
 
@@ -6164,7 +6192,7 @@
                         boxSizing: 'border-box',
                         paddingLeft: '10px'
                       }}>
-                        
+
                         {/* 1. Stylized TapuBulu Brand Logo */}
                         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
                           <span style={{
@@ -6281,7 +6309,7 @@
 
                         {/* 4. Info Rows List */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '100%' }}>
-                          
+
                           {/* Row: Header */}
                           <div style={{
                             textAlign: 'left',
@@ -6309,7 +6337,7 @@
                           </div>
 
                           {/* Row: Service and Maintenance */}
-                          <div 
+                          <div
                             onClick={() => setShowServiceModal(true)}
                             className="interactive-button-hover"
                             style={{
@@ -10377,7 +10405,7 @@
             <div className="dashboard-overlay-modal" onClick={() => { if (updatePhase === "completed" || updatePhase === "idle") setShowUpdateModal(false); }}>
               <div className="modal-card" onClick={e => e.stopPropagation()} style={{ width: '800px', padding: '40px', borderRadius: '30px' }}>
                 <button className="modal-close-btn" onClick={() => { if (updatePhase === "completed" || updatePhase === "idle") setShowUpdateModal(false); }} style={{ fontSize: '40px' }}>×</button>
-                
+
                 <h2 style={{ fontSize: '36px', fontWeight: '800', borderBottom: '2.5px solid #ddd', paddingBottom: '20px', marginBottom: '30px', color: '#10111a', fontFamily: 'Montserrat, sans-serif', display: 'flex', alignItems: 'center', gap: '15px' }}>
                   <span>🚀</span> Over-The-Air System Update
                 </h2>
@@ -10504,7 +10532,7 @@
             <div className="dashboard-overlay-modal" onClick={() => setShowServiceModal(false)}>
               <div className="modal-card" onClick={e => e.stopPropagation()} style={{ width: '800px', padding: '40px', borderRadius: '30px' }}>
                 <button className="modal-close-btn" onClick={() => setShowServiceModal(false)} style={{ fontSize: '40px' }}>×</button>
-                
+
                 <h2 style={{ fontSize: '36px', fontWeight: '800', borderBottom: '2.5px solid #ddd', paddingBottom: '20px', marginBottom: '30px', color: '#10111a', fontFamily: 'Montserrat, sans-serif', display: 'flex', alignItems: 'center', gap: '15px' }}>
                   <span>🩺</span> Service & Maintenance Status
                 </h2>
