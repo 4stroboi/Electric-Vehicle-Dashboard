@@ -814,6 +814,31 @@
       width: 78px !important;
       height: 78px !important;
     }
+
+    /* MY VEHICLE SCREEN ANIMATIONS */
+    @keyframes update-pulse {
+      0% { transform: scale(0.96); opacity: 0.8; }
+      50% { transform: scale(1.04); opacity: 1; }
+      100% { transform: scale(0.96); opacity: 0.8; }
+    }
+    @keyframes ripple-expand {
+      0% { transform: scale(0.7); opacity: 0.6; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+    @keyframes spin-slow {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .pulsing-update-badge {
+      animation: update-pulse 2s infinite ease-in-out;
+    }
+    .radar-ripple-1 {
+      animation: ripple-expand 3.5s infinite linear;
+    }
+    .radar-ripple-2 {
+      animation: ripple-expand 3.5s infinite linear;
+      animation-delay: 1.75s;
+    }
   </style>
 </head>
 
@@ -1071,6 +1096,247 @@
       const [soundMid, setSoundMid] = React.useState(2);
       const [soundTreble, setSoundTreble] = React.useState(5);
       const [ambientLightOn, setAmbientLightOn] = React.useState(true);
+
+      // --- MY VEHICLE CUSTOM STATES & UPDATE FLOW ---
+      const [systemVersion, setSystemVersion] = React.useState("Tapu Bulu 1.0.0");
+      const [isUpdateAvailable, setIsUpdateAvailable] = React.useState(true);
+      const [showUpdateModal, setShowUpdateModal] = React.useState(false);
+      const [updateProgress, setUpdateProgress] = React.useState(0);
+      const [updatePhase, setUpdatePhase] = React.useState("idle"); // 'idle' | 'checking' | 'downloading' | 'installing' | 'rebooting' | 'completed'
+      const [showServiceModal, setShowServiceModal] = React.useState(false);
+
+      // --- MAP NAVIGATION SIMULATION ---
+      const [isSimulatingNav, setIsSimulatingNav] = React.useState(false);
+      const [simulatingStationId, setSimulatingStationId] = React.useState(null);
+      const simCarMarkerRef = React.useRef(null);
+      const simIntervalRef = React.useRef(null);
+      const startingBatteryRef = React.useRef(58);
+
+      const stopNavigationSimulation = () => {
+        setIsSimulatingNav(false);
+        setSimulatingStationId(null);
+        if (simIntervalRef.current) {
+          clearInterval(simIntervalRef.current);
+          simIntervalRef.current = null;
+        }
+        const map = showMapModal ? fullscreenMapInstanceRef.current : leafletMapInstanceRef.current;
+        if (map && simCarMarkerRef.current) {
+          map.removeLayer(simCarMarkerRef.current);
+          simCarMarkerRef.current = null;
+        }
+      };
+
+      const startNavigationSimulation = (id) => {
+        const map = showMapModal ? fullscreenMapInstanceRef.current : leafletMapInstanceRef.current;
+        if (!map) return;
+
+        stopNavigationSimulation();
+
+        const stations = {
+          1: {
+            route: [
+              [1.5543, 110.3332], [1.5528, 110.3377], [1.5521, 110.3400], [1.5492, 110.3421],
+              [1.5475, 110.3435], [1.5447, 110.3461], [1.5418, 110.3488], [1.5375, 110.3525],
+              [1.5342, 110.3557], [1.5323, 110.3582], [1.5323, 110.3620], [1.5323, 110.3685]
+            ],
+            shortcut: [
+              [1.5543, 110.3332], [1.5528, 110.3377], [1.5521, 110.3400], [1.5492, 110.3421],
+              [1.5475, 110.3435], [1.5460, 110.3490], [1.5420, 110.3530], [1.5342, 110.3557],
+              [1.5323, 110.3582], [1.5323, 110.3620], [1.5323, 110.3685]
+            ],
+            batteryDiff: 1.4
+          },
+          2: {
+            route: [
+              [1.5543, 110.3332], [1.5528, 110.3377], [1.5521, 110.3400], [1.5510, 110.3420],
+              [1.5505, 110.3450], [1.5480, 110.3480], [1.5440, 110.3510], [1.5410, 110.3540],
+              [1.5410, 110.3580]
+            ],
+            shortcut: [
+              [1.5543, 110.3332], [1.5528, 110.3377], [1.5521, 110.3400], [1.5510, 110.3420],
+              [1.5490, 110.3440], [1.5450, 110.3465], [1.5410, 110.3500], [1.5410, 110.3580]
+            ],
+            batteryDiff: 4.2
+          },
+          3: {
+            route: [
+              [1.5543, 110.3332], [1.5515, 110.3328], [1.5485, 110.3320], [1.5450, 110.3315],
+              [1.5410, 110.3330], [1.5390, 110.3350]
+            ],
+            shortcut: [
+              [1.5543, 110.3332], [1.5515, 110.3328], [1.5460, 110.3300], [1.5390, 110.3350]
+            ],
+            batteryDiff: 5.0
+          }
+        };
+
+        const activeRoute = showTraffic ? stations[id].shortcut : stations[id].route;
+        if (!activeRoute) return;
+
+        setIsSimulatingNav(true);
+        setSimulatingStationId(id);
+        startingBatteryRef.current = battery;
+
+        const interpolatePoints = (coords, steps = 15) => {
+          const points = [];
+          for (let i = 0; i < coords.length - 1; i++) {
+            const start = coords[i];
+            const end = coords[i + 1];
+            for (let step = 0; step < steps; step++) {
+              const lat = start[0] + (end[0] - start[0]) * (step / steps);
+              const lon = start[1] + (end[1] - start[1]) * (step / steps);
+              points.push([lat, lon]);
+            }
+          }
+          points.push(coords[coords.length - 1]);
+          return points;
+        };
+
+        const fineRoute = interpolatePoints(activeRoute, 12);
+        let currentIndex = 0;
+
+        const carIcon = L.divIcon({
+          className: 'simulated-car-marker',
+          html: `
+            <div style="
+              width: 52px; 
+              height: 52px; 
+              background-color: #2f80ed; 
+              border: 4px solid #ffffff; 
+              border-radius: 50%; 
+              display: flex; 
+              justify-content: center; 
+              align-items: center; 
+              box-shadow: 0 0 20px rgba(47,128,237,0.85);
+              transition: transform 0.1s linear;
+              position: relative;
+            ">
+              <span style="font-size: 26px; transform: scaleX(-1); display: inline-block;">🚘</span>
+            </div>
+          `,
+          iconSize: [52, 52],
+          iconAnchor: [26, 26]
+        });
+
+        const carMarker = L.marker(fineRoute[0], { icon: carIcon }).addTo(map);
+        simCarMarkerRef.current = carMarker;
+
+        const calculateBearing = (p1, p2) => {
+          const dLon = (p2[1] - p1[1]) * Math.PI / 180;
+          const lat1 = p1[0] * Math.PI / 180;
+          const lat2 = p2[0] * Math.PI / 180;
+          const y = Math.sin(dLon) * Math.cos(lat2);
+          const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+          let brng = Math.atan2(y, x) * 180 / Math.PI;
+          return (brng + 360) % 360;
+        };
+
+        simIntervalRef.current = setInterval(() => {
+          if (currentIndex >= fineRoute.length - 1) {
+            clearInterval(simIntervalRef.current);
+            simIntervalRef.current = null;
+            setIsSimulatingNav(false);
+            setSimulatingStationId(null);
+
+            if (typeof playNotificationChime === 'function') {
+              playNotificationChime();
+            }
+            setActiveNotification({
+              text: `🏁 Route Simulation Completed! Depleted battery: -${stations[id].batteryDiff}%`,
+              type: "success",
+              duration: 5000
+            });
+            setTimeout(() => {
+              setActiveNotification(null);
+            }, 5000);
+
+            map.flyTo(activeRoute[activeRoute.length - 1], 15);
+            return;
+          }
+
+          currentIndex++;
+          const currentPoint = fineRoute[currentIndex];
+          const nextPoint = fineRoute[currentIndex + 1] || currentPoint;
+
+          carMarker.setLatLng(currentPoint);
+
+          const bearing = calculateBearing(currentPoint, nextPoint);
+          const markerEl = carMarker.getElement();
+          if (markerEl) {
+            const innerDiv = markerEl.querySelector('div');
+            if (innerDiv) {
+              innerDiv.style.transform = `rotate(${bearing}deg)`;
+            }
+          }
+
+          map.setView(currentPoint, map.getZoom());
+
+          const totalSteps = fineRoute.length;
+          const targetDrain = stations[id].batteryDiff;
+          const currentDrain = targetDrain * (currentIndex / totalSteps);
+          setBattery(Math.max(0, startingBatteryRef.current - currentDrain));
+
+        }, 150);
+      };
+
+      const runSystemUpdate = () => {
+        setUpdatePhase("checking");
+        setUpdateProgress(0);
+        
+        // Step 1: Checking (1.5s)
+        setTimeout(() => {
+          setUpdatePhase("downloading");
+          
+          // Step 2: Downloading (animate progress 0 to 100 over 4s)
+          let downloadProgress = 0;
+          const downloadInterval = setInterval(() => {
+            downloadProgress += 5;
+            if (downloadProgress >= 100) {
+              clearInterval(downloadInterval);
+              setUpdateProgress(100);
+              setUpdatePhase("installing");
+              
+              // Step 3: Installing (animate progress 0 to 100 over 3s)
+              let installProgress = 0;
+              const installInterval = setInterval(() => {
+                installProgress += 10;
+                if (installProgress >= 100) {
+                  clearInterval(installInterval);
+                  setUpdateProgress(100);
+                  setUpdatePhase("rebooting");
+                  
+                  // Step 4: Rebooting (2s)
+                  setTimeout(() => {
+                    setUpdatePhase("completed");
+                    setSystemVersion("Tapu Bulu 1.2.1.3");
+                    setIsUpdateAvailable(false);
+                    
+                    // Trigger success chime and notification
+                    if (typeof playNotificationChime === 'function') {
+                      playNotificationChime();
+                    }
+                    setActiveNotification({
+                      text: "🚀 Car System Successfully Upgraded to Tapu Bulu 1.2.1.3!",
+                      type: "success",
+                      duration: 5000
+                    });
+                    setTimeout(() => {
+                      setActiveNotification(null);
+                    }, 5000);
+                    
+                  }, 2000);
+                } else {
+                  setUpdateProgress(installProgress);
+                }
+              }, 300);
+              
+            } else {
+              setUpdateProgress(downloadProgress);
+            }
+          }, 200);
+          
+        }, 1500);
+      };
 
       const [acPower, setAcPower] = React.useState(true);
       const [acAutoMode, setAcAutoMode] = React.useState(true);
@@ -1503,33 +1769,27 @@
           const chargingIcon = L.divIcon({
             className: 'custom-charging-pin',
             html: `
-          <div style="
-            width: 34px; 
-            height: 42px; 
-            background-color: #2b82c9; 
-            border: 3.5px solid #1a1a1a; 
-            border-radius: 9px; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            box-shadow: 0 5px 12px rgba(0,0,0,0.35);
-            position: relative;
-          ">
-            <!-- Lightning Bolt -->
-            <svg width="18" height="24" viewBox="0 0 24 24" fill="#ffb300" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
-              <path d="M19 9h-6.83l2.91-9h-7.08l-5 13h6.83l-2.91 11z" />
-            </svg>
-            
-            <!-- Plug Wire Loop -->
-            <svg style="position: absolute; top: -10px; right: -12px; width: 22px; height: 22px; overflow: visible;">
-              <path d="M 2,12 C 2,2 18,2 18,12" fill="none" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round" />
-              <path d="M 18,12 L 18,15" fill="none" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round" />
-            </svg>
-          </div>
-        `,
-            iconSize: [34, 42],
-            iconAnchor: [17, 42],
-            popupAnchor: [0, -45]
+            <div style="
+              width: 44px; 
+              height: 44px; 
+              background-color: #2b8a3e; 
+              border: 3.5px solid #ffffff; 
+              border-radius: 50%; 
+              display: flex; 
+              justify-content: center; 
+              align-items: center; 
+              box-shadow: 0 0 15px rgba(43, 138, 62, 0.75);
+              position: relative;
+            ">
+              <!-- Lightning Bolt -->
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="#ffffff" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));">
+                <path d="M19 9h-6.83l2.91-9h-7.08l-5 13h6.83l-2.91 11z" />
+              </svg>
+            </div>
+          `,
+            iconSize: [44, 44],
+            iconAnchor: [22, 22],
+            popupAnchor: [0, -25]
           });
 
           // 4. Coordinates of the 5 Kuching charging stations shown in Picture Two
@@ -1629,6 +1889,7 @@
 
       // --- FULL SCREEN MAP ROUTE INTEGRATION & HOOKS ---
       const drawRouteForStation = (id, mapInstance = null) => {
+        stopNavigationSimulation();
         const map = mapInstance || fullscreenMapInstanceRef.current;
         if (!map) return;
 
@@ -1815,32 +2076,26 @@
           className: 'custom-charging-pin',
           html: `
         <div style="
-          width: 34px; 
-          height: 42px; 
-          background-color: #2b82c9; 
-          border: 3.5px solid #1a1a1a; 
-          border-radius: 9px; 
+          width: 44px; 
+          height: 44px; 
+          background-color: #2b8a3e; 
+          border: 3.5px solid #ffffff; 
+          border-radius: 50%; 
           display: flex; 
           justify-content: center; 
           align-items: center; 
-          box-shadow: 0 5px 12px rgba(0,0,0,0.35);
+          box-shadow: 0 0 15px rgba(43, 138, 62, 0.75);
           position: relative;
         ">
           <!-- Lightning Bolt -->
-          <svg width="18" height="24" viewBox="0 0 24 24" fill="#ffb300" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#ffffff" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));">
             <path d="M19 9h-6.83l2.91-9h-7.08l-5 13h6.83l-2.91 11z" />
-          </svg>
-          
-          <!-- Plug Wire Loop -->
-          <svg style="position: absolute; top: -10px; right: -12px; width: 22px; height: 22px; overflow: visible;">
-            <path d="M 2,12 C 2,2 18,2 18,12" fill="none" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round" />
-            <path d="M 18,12 L 18,15" fill="none" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round" />
           </svg>
         </div>
       `,
-          iconSize: [34, 42],
-          iconAnchor: [17, 42],
-          popupAnchor: [0, -45]
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
+          popupAnchor: [0, -25]
         });
 
         // Draw other available stations on map
@@ -1884,6 +2139,44 @@
         });
         const mEnd = L.marker([st.lat, st.lon], { icon: endIcon }).addTo(map).bindPopup(`<b>${st.name}</b>`);
         fullscreenMarkersRef.current.push(mEnd);
+
+        // Draw midway charging station icon exactly between the two locations
+        const midwayCoords = {
+          1: [1.5418, 110.3488], // Crookshank Intermediate
+          2: [1.5480, 110.3480], // Tabuan Intermediate
+          3: [1.5485, 110.3320]  // Satok Intermediate
+        };
+        const midwayLoc = midwayCoords[id];
+        if (midwayLoc) {
+          const midwayIcon = L.divIcon({
+            className: 'custom-midway-charging-pin',
+            html: `
+              <div style="
+                width: 44px; 
+                height: 44px; 
+                background-color: #2b8a3e; 
+                border: 3.5px solid #ffffff; 
+                border-radius: 50%; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                box-shadow: 0 0 15px rgba(43, 138, 62, 0.75);
+                position: relative;
+              ">
+                <!-- Lightning Bolt -->
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#ffffff" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));">
+                  <path d="M19 9h-6.83l2.91-9h-7.08l-5 13h6.83l-2.91 11z" />
+                </svg>
+              </div>
+            `,
+            iconSize: [44, 44],
+            iconAnchor: [22, 22],
+            popupAnchor: [0, -25]
+          });
+          const mMidway = L.marker(midwayLoc, { icon: midwayIcon }).addTo(map)
+            .bindPopup(`<b>Midway Charging Hub</b><br>Available Backup Station<br><span style="color:#2f80ed;font-weight:bold">Nominal SOH</span>`);
+          fullscreenMarkersRef.current.push(mMidway);
+        }
 
         // Add Travel time floating duration label pills
         if (showTraffic) {
@@ -2438,6 +2731,7 @@
       };
 
       const handleNavigateToQuickLocation = (name, coords) => {
+        stopNavigationSimulation();
         setSelectedStationId(null); // Deselect charging stations
         setActiveDestination(name);
         setActiveDestinationCoords(coords);
@@ -4574,6 +4868,7 @@
                           </div>
                           <button
                             onClick={() => {
+                              stopNavigationSimulation();
                               setActiveDestination(null);
                               setActiveDestinationCoords(null);
                               setSearchQuery("");
@@ -4864,6 +5159,44 @@
                               🏁 <strong>{showTraffic ? '4.4 km' : '4.7 km'}</strong> | ⏰ ETA <strong>{showTraffic ? statsShortcut.etaTime : stats.etaTime}</strong> ({showTraffic ? 18 : 28} min)
                             </div>
                           </div>
+
+                          {selectedStationId === 1 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isSimulatingNav && simulatingStationId === 1) {
+                                  stopNavigationSimulation();
+                                } else {
+                                  startNavigationSimulation(1);
+                                }
+                              }}
+                              className="interactive-button-hover"
+                              style={{
+                                width: '100%',
+                                height: '70px',
+                                backgroundColor: (isSimulatingNav && simulatingStationId === 1) ? '#e03131' : '#2f80ed',
+                                border: 'none',
+                                borderRadius: '18px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '10px',
+                                fontSize: '22px',
+                                fontWeight: '800',
+                                color: '#ffffff',
+                                cursor: 'pointer',
+                                marginTop: '20px',
+                                boxShadow: (isSimulatingNav && simulatingStationId === 1)
+                                  ? '0 6px 20px rgba(224,49,49,0.25)'
+                                  : '0 6px 20px rgba(47,128,237,0.25)',
+                                transition: 'all 0.2s',
+                                outline: 'none',
+                                fontFamily: 'Montserrat, sans-serif'
+                              }}
+                            >
+                              <span>🚀</span> {(isSimulatingNav && simulatingStationId === 1) ? "STOP SIMULATED NAVIGATION" : "START SIMULATED NAVIGATION"}
+                            </button>
+                          )}
                         </div>
                       );
                     })()}
@@ -5077,6 +5410,44 @@
                               🏁 <strong>{showTraffic ? '13.2 km' : '13.9 km'}</strong> | ⏰ ETA <strong>{showTraffic ? statsShortcut.etaTime : stats.etaTime}</strong> ({showTraffic ? 12 : 18} min)
                             </div>
                           </div>
+
+                          {selectedStationId === 2 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isSimulatingNav && simulatingStationId === 2) {
+                                  stopNavigationSimulation();
+                                } else {
+                                  startNavigationSimulation(2);
+                                }
+                              }}
+                              className="interactive-button-hover"
+                              style={{
+                                width: '100%',
+                                height: '70px',
+                                backgroundColor: (isSimulatingNav && simulatingStationId === 2) ? '#e03131' : '#2f80ed',
+                                border: 'none',
+                                borderRadius: '18px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '10px',
+                                fontSize: '22px',
+                                fontWeight: '800',
+                                color: '#ffffff',
+                                cursor: 'pointer',
+                                marginTop: '20px',
+                                boxShadow: (isSimulatingNav && simulatingStationId === 2)
+                                  ? '0 6px 20px rgba(224,49,49,0.25)'
+                                  : '0 6px 20px rgba(47,128,237,0.25)',
+                                transition: 'all 0.2s',
+                                outline: 'none',
+                                fontFamily: 'Montserrat, sans-serif'
+                              }}
+                            >
+                              <span>🚀</span> {(isSimulatingNav && simulatingStationId === 2) ? "STOP SIMULATED NAVIGATION" : "START SIMULATED NAVIGATION"}
+                            </button>
+                          )}
                         </div>
                       );
                     })()}
@@ -5289,6 +5660,44 @@
                               🏁 <strong>{showTraffic ? '15.8 km' : '16.5 km'}</strong> | ⏰ ETA <strong>{showTraffic ? statsShortcut.etaTime : stats.etaTime}</strong> ({showTraffic ? 21 : 32} min)
                             </div>
                           </div>
+
+                          {selectedStationId === 3 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isSimulatingNav && simulatingStationId === 3) {
+                                  stopNavigationSimulation();
+                                } else {
+                                  startNavigationSimulation(3);
+                                }
+                              }}
+                              className="interactive-button-hover"
+                              style={{
+                                width: '100%',
+                                height: '70px',
+                                backgroundColor: (isSimulatingNav && simulatingStationId === 3) ? '#e03131' : '#2f80ed',
+                                border: 'none',
+                                borderRadius: '18px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '10px',
+                                fontSize: '22px',
+                                fontWeight: '800',
+                                color: '#ffffff',
+                                cursor: 'pointer',
+                                marginTop: '20px',
+                                boxShadow: (isSimulatingNav && simulatingStationId === 3)
+                                  ? '0 6px 20px rgba(224,49,49,0.25)'
+                                  : '0 6px 20px rgba(47,128,237,0.25)',
+                                transition: 'all 0.2s',
+                                outline: 'none',
+                                fontFamily: 'Montserrat, sans-serif'
+                              }}
+                            >
+                              <span>🚀</span> {(isSimulatingNav && simulatingStationId === 3) ? "STOP SIMULATED NAVIGATION" : "START SIMULATED NAVIGATION"}
+                            </button>
+                          )}
                         </div>
                       );
                     })()}
@@ -5513,7 +5922,7 @@
                 padding: '40px 60px 40px 60px'
               }}>
                 {/* Title Overlay at top */}
-                {activeSettingsTab !== "DriverAssist" && activeSettingsTab !== "VehicleControls" && (
+                {activeSettingsTab !== "DriverAssist" && activeSettingsTab !== "VehicleControls" && activeSettingsTab !== "MyVehicle" && (
                   <div style={{
                     position: 'absolute',
                     top: '40px',
@@ -5530,7 +5939,415 @@
                   </div>
                 )}
 
-                {activeSettingsTab === "DriverAssist" ? (
+                {activeSettingsTab === "MyVehicle" ? (
+                  /* --- CUSTOM MY VEHICLE SCREEN (Picture Two Layout) --- */
+                  <div style={{
+                    width: '75%',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    boxSizing: 'border-box',
+                    paddingRight: '40px',
+                    borderRight: isDarkMode ? '1.5px solid rgba(255,255,255,0.06)' : '1.5px solid #e9ecef',
+                    position: 'relative',
+                    animation: 'fadeIn 0.35s ease-out'
+                  }}>
+                    {/* Header */}
+                    <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+                      <h2 style={{
+                        fontSize: '48px',
+                        fontWeight: '800',
+                        margin: '0',
+                        fontFamily: 'Montserrat, sans-serif',
+                        color: isDarkMode ? '#ffffff' : '#111111'
+                      }}>
+                        My Vehicle
+                      </h2>
+                    </div>
+
+                    {/* Sub-body layout (50/50 split) */}
+                    <div style={{ display: 'flex', flex: 1, gap: '40px', height: 'calc(100% - 130px)', minHeight: 0 }}>
+                      
+                      {/* Left Column: Top-down perspective view with live tire pressures */}
+                      <div style={{
+                        flex: 1,
+                        backgroundColor: isDarkMode ? '#1e1f2c' : '#ffffff',
+                        borderRadius: '36px',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.05)',
+                        border: isDarkMode ? '1.5px solid rgba(255,255,255,0.06)' : '1.5px solid rgba(0,0,0,0.04)'
+                      }}>
+                        
+                        {/* Interactive Clicking Layer over the entire container for Tire Pressure Modal */}
+                        <div 
+                          onClick={() => setIsTireModalOpen(true)}
+                          style={{
+                            position: 'absolute',
+                            width: '100%',
+                            height: '100%',
+                            cursor: 'pointer',
+                            zIndex: 5
+                          }} 
+                          title="Click to Adjust Tire Pressures"
+                        />
+
+                        {/* Concentric Radar ripples expanding from the car */}
+                        <div className="radar-ripple-1" style={{
+                          position: 'absolute',
+                          width: '320px',
+                          height: '560px',
+                          borderRadius: '160px / 280px',
+                          border: '3.5px solid rgba(43, 138, 62, 0.25)',
+                          pointerEvents: 'none',
+                          zIndex: 1
+                        }} />
+                        <div className="radar-ripple-2" style={{
+                          position: 'absolute',
+                          width: '320px',
+                          height: '560px',
+                          borderRadius: '160px / 280px',
+                          border: '3.5px solid rgba(43, 138, 62, 0.25)',
+                          pointerEvents: 'none',
+                          zIndex: 1
+                        }} />
+
+                        {/* Top-down Car view image */}
+                        <img
+                          src="img/car-topview.png"
+                          style={{
+                            height: '65%',
+                            maxHeight: '520px',
+                            objectFit: 'contain',
+                            filter: mirrorsFolded ? 'brightness(0.95) blur(0.5px)' : 'none',
+                            transition: 'all 0.5s ease',
+                            zIndex: 2,
+                            pointerEvents: 'none'
+                          }}
+                        />
+
+                        {/* Green Glowing Rounded Tyre indicators */}
+                        {/* Front Left Tire */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '25%',
+                          left: '26%',
+                          width: '28px',
+                          height: '75px',
+                          backgroundColor: 'rgba(43, 138, 62, 0.45)',
+                          border: '2.5px solid #2b8a3e',
+                          borderRadius: '8px',
+                          boxShadow: '0 0 15px rgba(43,138,62,0.6)',
+                          zIndex: 3,
+                          pointerEvents: 'none'
+                        }} />
+                        {/* Front Right Tire */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '25%',
+                          right: '26%',
+                          width: '28px',
+                          height: '75px',
+                          backgroundColor: 'rgba(43, 138, 62, 0.45)',
+                          border: '2.5px solid #2b8a3e',
+                          borderRadius: '8px',
+                          boxShadow: '0 0 15px rgba(43,138,62,0.6)',
+                          zIndex: 3,
+                          pointerEvents: 'none'
+                        }} />
+                        {/* Rear Left Tire */}
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '22%',
+                          left: '26%',
+                          width: '28px',
+                          height: '75px',
+                          backgroundColor: 'rgba(43, 138, 62, 0.45)',
+                          border: '2.5px solid #2b8a3e',
+                          borderRadius: '8px',
+                          boxShadow: '0 0 15px rgba(43,138,62,0.6)',
+                          zIndex: 3,
+                          pointerEvents: 'none'
+                        }} />
+                        {/* Rear Right Tire */}
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '22%',
+                          right: '26%',
+                          width: '28px',
+                          height: '75px',
+                          backgroundColor: 'rgba(43, 138, 62, 0.45)',
+                          border: '2.5px solid #2b8a3e',
+                          borderRadius: '8px',
+                          boxShadow: '0 0 15px rgba(43,138,62,0.6)',
+                          zIndex: 3,
+                          pointerEvents: 'none'
+                        }} />
+
+                        {/* Live Tire Pressure text overlays */}
+                        {/* Front Left */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '22%',
+                          left: '9%',
+                          zIndex: 4,
+                          pointerEvents: 'none',
+                          color: isDarkMode ? '#ffffff' : '#1e1e1e',
+                          fontFamily: 'Montserrat, sans-serif',
+                          fontSize: '38px',
+                          fontWeight: '800'
+                        }}>
+                          {(tireFL - 5.1).toFixed(1)}
+                          <span style={{ fontSize: '24px', color: '#868e96', marginLeft: '4px', fontWeight: '600' }}>psi</span>
+                        </div>
+
+                        {/* Front Right */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '22%',
+                          right: '9%',
+                          zIndex: 4,
+                          pointerEvents: 'none',
+                          color: isDarkMode ? '#ffffff' : '#1e1e1e',
+                          fontFamily: 'Montserrat, sans-serif',
+                          fontSize: '38px',
+                          fontWeight: '800'
+                        }}>
+                          {(tireFR - 4.1).toFixed(1)}
+                          <span style={{ fontSize: '24px', color: '#868e96', marginLeft: '4px', fontWeight: '600' }}>psi</span>
+                        </div>
+
+                        {/* Rear Left */}
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '25%',
+                          left: '9%',
+                          zIndex: 4,
+                          pointerEvents: 'none',
+                          color: isDarkMode ? '#ffffff' : '#1e1e1e',
+                          fontFamily: 'Montserrat, sans-serif',
+                          fontSize: '38px',
+                          fontWeight: '800'
+                        }}>
+                          {(tireRL + 1.3).toFixed(1)}
+                          <span style={{ fontSize: '24px', color: '#868e96', marginLeft: '4px', fontWeight: '600' }}>psi</span>
+                        </div>
+
+                        {/* Rear Right */}
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '25%',
+                          right: '9%',
+                          zIndex: 4,
+                          pointerEvents: 'none',
+                          color: isDarkMode ? '#ffffff' : '#1e1e1e',
+                          fontFamily: 'Montserrat, sans-serif',
+                          fontSize: '38px',
+                          fontWeight: '800'
+                        }}>
+                          {(tireRR + 0.6).toFixed(1)}
+                          <span style={{ fontSize: '24px', color: '#868e96', marginLeft: '4px', fontWeight: '600' }}>psi</span>
+                        </div>
+
+                      </div>
+
+                      {/* Right Column: System Details, Update Button, and Subsystem Details */}
+                      <div style={{
+                        flex: 1.2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        boxSizing: 'border-box',
+                        paddingLeft: '10px'
+                      }}>
+                        
+                        {/* 1. Stylized TapuBulu Brand Logo */}
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
+                          <span style={{
+                            fontFamily: 'Montserrat, sans-serif',
+                            fontSize: '72px',
+                            fontWeight: '900',
+                            letterSpacing: '-2px',
+                            color: isDarkMode ? '#ffffff' : '#111111',
+                            marginRight: '6px'
+                          }}>
+                            Tapu
+                          </span>
+                          <span style={{
+                            fontFamily: "'Courier New', Courier, monospace",
+                            fontSize: '72px',
+                            fontWeight: '900',
+                            letterSpacing: '-3px',
+                            color: isDarkMode ? '#a0a3be' : '#222222',
+                            padding: '2px 12px',
+                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                            borderRadius: '16px',
+                            border: isDarkMode ? '1.5px solid rgba(255,255,255,0.1)' : '1.5px solid rgba(0,0,0,0.05)',
+                            textShadow: isDarkMode ? '0 0 10px rgba(255,255,255,0.25)' : 'none'
+                          }}>
+                            Bulu
+                          </span>
+                        </div>
+
+                        {/* 2. System Version details */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', marginBottom: '20px' }}>
+                          <strong style={{
+                            fontSize: '30px',
+                            fontFamily: 'Montserrat, sans-serif',
+                            color: isDarkMode ? '#ffffff' : '#1e1e1e'
+                          }}>
+                            Current version: {systemVersion}
+                          </strong>
+                          <strong style={{
+                            fontSize: '30px',
+                            fontFamily: 'Montserrat, sans-serif',
+                            color: isDarkMode ? '#ffffff' : '#1e1e1e'
+                          }}>
+                            ISA Map Version : G7.HCI.27.5.2026
+                          </strong>
+                        </div>
+
+                        {/* 3. Available Update Alert Bar / Button */}
+                        {isUpdateAvailable ? (
+                          <div
+                            onClick={() => {
+                              setUpdateProgress(0);
+                              setUpdatePhase("idle");
+                              setShowUpdateModal(true);
+                            }}
+                            className="interactive-button-hover pulsing-update-badge"
+                            style={{
+                              backgroundColor: isDarkMode ? '#1e1f2c' : '#f1f3f5',
+                              border: isDarkMode ? '2px solid rgba(255,255,255,0.08)' : '2px solid rgba(0,0,0,0.05)',
+                              borderRadius: '24px',
+                              padding: '26px 36px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              cursor: 'pointer',
+                              marginBottom: '35px',
+                              boxShadow: '0 10px 25px rgba(0,0,0,0.04)',
+                              transition: 'all 0.25s ease'
+                            }}
+                            title="Click to Install Car System Update"
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                              <div style={{
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '50%',
+                                backgroundColor: '#2b8a3e',
+                                boxShadow: '0 0 12px #2b8a3e'
+                              }} />
+                              <span style={{
+                                fontSize: '28px',
+                                fontWeight: '700',
+                                fontFamily: 'Montserrat, sans-serif',
+                                color: isDarkMode ? '#ffffff' : '#333333'
+                              }}>
+                                Available update Tapu Bulu 1.2.1.3
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '38px', color: '#8d92b0', fontWeight: 'bold' }}>&gt;</span>
+                          </div>
+                        ) : (
+                          <div style={{
+                            backgroundColor: isDarkMode ? 'rgba(43, 138, 62, 0.12)' : '#e6fcf5',
+                            border: '2.5px solid #2b8a3e',
+                            borderRadius: '24px',
+                            padding: '26px 36px',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: '15px',
+                            marginBottom: '35px',
+                            boxShadow: '0 10px 25px rgba(43, 138, 62, 0.05)'
+                          }}>
+                            <span style={{ fontSize: '36px', color: '#2b8a3e', fontWeight: 'bold' }}>✓</span>
+                            <span style={{
+                              fontSize: '28px',
+                              fontWeight: '800',
+                              fontFamily: 'Montserrat, sans-serif',
+                              color: '#2b8a3e'
+                            }}>
+                              System is Up to Date
+                            </span>
+                          </div>
+                        )}
+
+                        {/* 4. Info Rows List */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '100%' }}>
+                          
+                          {/* Row: Header */}
+                          <div style={{
+                            textAlign: 'left',
+                            fontSize: '32px',
+                            fontWeight: '800',
+                            fontFamily: 'Montserrat, sans-serif',
+                            color: isDarkMode ? '#ffffff' : '#1e1e1e',
+                            marginBottom: '5px'
+                          }}>
+                            My Vehicle
+                          </div>
+
+                          {/* Row: Name */}
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '25px 35px',
+                            backgroundColor: isDarkMode ? '#1e1f2c' : '#f1f3f5',
+                            borderRadius: '18px',
+                            border: isDarkMode ? '1.5px solid rgba(255,255,255,0.06)' : '1.5px solid rgba(0,0,0,0.03)'
+                          }}>
+                            <span style={{ fontSize: '28px', color: isDarkMode ? '#a0a3be' : '#495057', fontWeight: '600' }}>Name</span>
+                            <span style={{ fontSize: '28px', color: isDarkMode ? '#ffffff' : '#1e1e1e', fontWeight: '800', fontFamily: 'Montserrat, sans-serif' }}>Forza Tycan</span>
+                          </div>
+
+                          {/* Row: Service and Maintenance */}
+                          <div 
+                            onClick={() => setShowServiceModal(true)}
+                            className="interactive-button-hover"
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '25px 35px',
+                              backgroundColor: isDarkMode ? '#1e1f2c' : '#f1f3f5',
+                              borderRadius: '18px',
+                              cursor: 'pointer',
+                              border: isDarkMode ? '1.5px solid rgba(255,255,255,0.06)' : '1.5px solid rgba(0,0,0,0.03)'
+                            }}
+                          >
+                            <span style={{ fontSize: '28px', color: isDarkMode ? '#a0a3be' : '#495057', fontWeight: '600' }}>Service and Maintenance</span>
+                            <span style={{ fontSize: '32px', color: '#8d92b0', fontWeight: 'bold' }}>&gt;</span>
+                          </div>
+
+                          {/* Row: VIN */}
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '25px 35px',
+                            backgroundColor: isDarkMode ? '#1e1f2c' : '#f1f3f5',
+                            borderRadius: '18px',
+                            border: isDarkMode ? '1.5px solid rgba(255,255,255,0.06)' : '1.5px solid rgba(0,0,0,0.03)'
+                          }}>
+                            <span style={{ fontSize: '28px', color: isDarkMode ? '#a0a3be' : '#495057', fontWeight: '600' }}>VIN</span>
+                            <span style={{ fontSize: '26px', color: isDarkMode ? '#ffffff' : '#1e1e1e', fontWeight: '800', fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.5px' }}>LB1234567890UNIMAS</span>
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+                  </div>
+                ) : activeSettingsTab === "DriverAssist" ? (
                   /* --- HIGHLY DETAILED DRIVER ASSIST SCREEN (Picture Two Layout) --- */
                   <div style={{
                     width: '75%',
@@ -6874,26 +7691,8 @@
                           )}
 
                           {activeSettingsTab === "MyVehicle" && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '32px', fontWeight: '500' }}>Car Lock Telemetry</span>
-                                <button onClick={toggleLock} style={{ padding: '14px 28px', borderRadius: '12px', border: 'none', cursor: 'pointer', backgroundColor: isLocked ? '#e03131' : '#2b8a3e', color: 'white', fontWeight: 'bold', fontSize: '25px' }}>
-                                  {isLocked ? "LOCK DOORS" : "UNLOCK DOORS"}
-                                </button>
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '32px', fontWeight: '500' }}>Run diagnostics</span>
-                                <button onClick={() => setShowDiagnostics(true)} style={{ padding: '14px 28px', borderRadius: '12px', border: 'none', cursor: 'pointer', backgroundColor: '#3b5bdb', color: 'white', fontWeight: 'bold', fontSize: '25px' }}>
-                                  START SCAN
-                                </button>
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '32px', fontWeight: '500' }}>Tire Pressures Adjustment</span>
-                                <button onClick={() => setIsTireModalOpen(true)} style={{ padding: '14px 28px', borderRadius: '12px', border: 'none', cursor: 'pointer', backgroundColor: '#495057', color: 'white', fontWeight: 'bold', fontSize: '25px' }}>
-                                  SET PSI
-                                </button>
-                              </div>
-                            </div>
+                            /* Redesigned into top-level custom Picture Two layout above */
+                            null
                           )}
                         </div>
                       </div>
@@ -8138,22 +8937,17 @@
                       margin: 0,
                       textAlign: 'left',
                       display: 'flex',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      height: 'auto',
+                      lineHeight: '1.2',
+                      width: '450px'
                     }}>
                       Back to Home Screen
                     </p>
                   </div>
-                  <img
-                    src="img/ellipse-7.png"
-                    style={{
-                      width: '75px',
-                      height: '75px',
-                      borderRadius: '15px',
-                      objectFit: 'cover',
-                      filter: 'grayscale(1)',
-                      boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
-                    }}
-                  />
                 </div>
               ) : (
                 <div className="info-tiles" onClick={togglePlay} style={{ cursor: 'pointer' }}>
@@ -8188,7 +8982,15 @@
                   </div>
                   <p className="title-singer" style={{
                     fontSize: '38.4px',
-                    color: isDarkMode ? '#ffffff' : '#333333'
+                    color: isDarkMode ? '#ffffff' : '#333333',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    height: 'auto',
+                    lineHeight: '1.2',
+                    margin: 0,
+                    width: '450px',
+                    textAlign: 'left'
                   }}>{currentTrack.title} - {currentTrack.artist}</p>
                 </div>
               )}
@@ -9566,6 +10368,183 @@
                   </div>
 
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* 4. SYSTEM UPDATE OVERLAY MODAL */}
+          {showUpdateModal && (
+            <div className="dashboard-overlay-modal" onClick={() => { if (updatePhase === "completed" || updatePhase === "idle") setShowUpdateModal(false); }}>
+              <div className="modal-card" onClick={e => e.stopPropagation()} style={{ width: '800px', padding: '40px', borderRadius: '30px' }}>
+                <button className="modal-close-btn" onClick={() => { if (updatePhase === "completed" || updatePhase === "idle") setShowUpdateModal(false); }} style={{ fontSize: '40px' }}>×</button>
+                
+                <h2 style={{ fontSize: '36px', fontWeight: '800', borderBottom: '2.5px solid #ddd', paddingBottom: '20px', marginBottom: '30px', color: '#10111a', fontFamily: 'Montserrat, sans-serif', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <span>🚀</span> Over-The-Air System Update
+                </h2>
+
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  {updatePhase === "idle" && (
+                    <div>
+                      <div style={{ fontSize: '100px', marginBottom: '30px' }}>📦</div>
+                      <h3 style={{ fontSize: '32px', fontWeight: 'bold', color: '#1e1e1e', marginBottom: '15px' }}>New Software Version Available</h3>
+                      <p style={{ fontSize: '22px', color: '#555555', marginBottom: '40px', lineHeight: '1.5' }}>
+                        Version <strong>Tapu Bulu 1.2.1.3</strong> is ready for installation.<br />
+                        This update includes critical autopilot calibrations, lane keep assist speed optimizations, and enhanced battery diagnostic capabilities.
+                      </p>
+                      <button
+                        onClick={runSystemUpdate}
+                        className="interactive-button-hover"
+                        style={{
+                          width: '100%',
+                          padding: '24px',
+                          backgroundColor: '#2b8a3e',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '16px',
+                          fontSize: '26px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          boxShadow: '0 8px 24px rgba(43,138,62,0.25)',
+                          transition: 'all 0.25s'
+                        }}
+                      >
+                        START SYSTEM UPGRADE
+                      </button>
+                    </div>
+                  )}
+
+                  {updatePhase === "checking" && (
+                    <div>
+                      <div className="pulsing-update-badge" style={{ fontSize: '100px', marginBottom: '30px' }}>🔍</div>
+                      <h3 style={{ fontSize: '32px', fontWeight: 'bold', color: '#1e1e1e', marginBottom: '15px' }}>Verifying Update Package...</h3>
+                      <p style={{ fontSize: '22px', color: '#555555', marginBottom: '30px' }}>
+                        Contacting Tapu Bulu OTA Server and verifying integrity hashes.
+                      </p>
+                      <div style={{ width: '100%', height: '14px', backgroundColor: '#e9ecef', borderRadius: '7px', overflow: 'hidden', position: 'relative' }}>
+                        <div style={{ height: '100%', width: '30%', backgroundColor: '#6200ee', borderRadius: '7px', animation: 'fadeIn 1s infinite alternate' }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {updatePhase === "downloading" && (
+                    <div>
+                      <div className="pulsing-update-badge" style={{ fontSize: '100px', marginBottom: '30px' }}>📥</div>
+                      <h3 style={{ fontSize: '32px', fontWeight: 'bold', color: '#1e1e1e', marginBottom: '15px' }}>Downloading Update Package...</h3>
+                      <p style={{ fontSize: '22px', color: '#555555', marginBottom: '30px' }}>
+                        Downloading files from satellite OTA stream: <strong>{updateProgress}%</strong>
+                      </p>
+                      <div style={{ width: '100%', height: '14px', backgroundColor: '#e9ecef', borderRadius: '7px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${updateProgress}%`, backgroundColor: '#2f80ed', borderRadius: '7px', transition: 'width 0.2s ease-out' }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {updatePhase === "installing" && (
+                    <div>
+                      <div style={{ fontSize: '100px', marginBottom: '30px', animation: 'spin-slow 6s infinite linear', display: 'inline-block' }}>⚙️</div>
+                      <h3 style={{ fontSize: '32px', fontWeight: 'bold', color: '#1e1e1e', marginBottom: '15px' }}>Installing Firmware Patch...</h3>
+                      <p style={{ fontSize: '22px', color: '#e03131', fontWeight: 'bold', marginBottom: '30px' }}>
+                        Flashing blocks: {Math.round(updateProgress / 10)}/10. Do not power off vehicle!
+                      </p>
+                      <div style={{ width: '100%', height: '14px', backgroundColor: '#e9ecef', borderRadius: '7px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${updateProgress}%`, backgroundColor: '#ff9b00', borderRadius: '7px', transition: 'width 0.3s ease-out' }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {updatePhase === "rebooting" && (
+                    <div>
+                      <div className="pulsing-update-badge" style={{ fontSize: '100px', marginBottom: '30px' }}>⚡</div>
+                      <h3 style={{ fontSize: '32px', fontWeight: 'bold', color: '#1e1e1e', marginBottom: '15px' }}>Rebooting Subsystems...</h3>
+                      <p style={{ fontSize: '22px', color: '#555555', marginBottom: '30px' }}>
+                        Re-calibrating camera arrays, battery controllers, and vehicle telemetry.
+                      </p>
+                      <div style={{ width: '100%', height: '14px', backgroundColor: '#e9ecef', borderRadius: '7px', overflow: 'hidden', position: 'relative' }}>
+                        <div style={{ height: '100%', width: '100%', backgroundColor: '#6200ee', borderRadius: '7px', opacity: 0.5 }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {updatePhase === "completed" && (
+                    <div>
+                      <div style={{ fontSize: '120px', marginBottom: '20px', color: '#2b8a3e', animation: 'slideUp 0.5s ease-out' }}>🎉</div>
+                      <h3 style={{ fontSize: '36px', fontWeight: 'bold', color: '#2b8a3e', marginBottom: '15px' }}>Upgrade Completed Successfully!</h3>
+                      <p style={{ fontSize: '22px', color: '#333333', marginBottom: '40px', lineHeight: '1.5' }}>
+                        Your vehicle has been successfully upgraded to version <strong>Tapu Bulu 1.2.1.3</strong>.<br />
+                        All safety features are active, and calibration diagnostics returned a nominal SOH.
+                      </p>
+                      <button
+                        onClick={() => setShowUpdateModal(false)}
+                        className="interactive-button-hover"
+                        style={{
+                          width: '100%',
+                          padding: '20px',
+                          backgroundColor: '#10111a',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '12px',
+                          fontSize: '22px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        CLOSE DIAGNOSTICS & DONE
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* 5. SERVICE & MAINTENANCE OVERLAY MODAL */}
+          {showServiceModal && (
+            <div className="dashboard-overlay-modal" onClick={() => setShowServiceModal(false)}>
+              <div className="modal-card" onClick={e => e.stopPropagation()} style={{ width: '800px', padding: '40px', borderRadius: '30px' }}>
+                <button className="modal-close-btn" onClick={() => setShowServiceModal(false)} style={{ fontSize: '40px' }}>×</button>
+                
+                <h2 style={{ fontSize: '36px', fontWeight: '800', borderBottom: '2.5px solid #ddd', paddingBottom: '20px', marginBottom: '30px', color: '#10111a', fontFamily: 'Montserrat, sans-serif', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <span>🩺</span> Service & Maintenance Status
+                </h2>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '35px' }}>
+                  {[
+                    { label: "Main Traction Battery (SOH)", value: "98% (Excellent)", status: "healthy", icon: "🔋" },
+                    { label: "Front and Rear Brake Pads", value: "85% Remaining Life", status: "healthy", icon: "🛑" },
+                    { label: "Tire Pressure Sensors (TPMS)", value: "Calibrated & Active", status: "healthy", icon: "☸️" },
+                    { label: "ISA Speed Sign Recognition Cam", value: "100% Calibrated", status: "healthy", icon: "🛣️" },
+                    { label: "Subsystem Coolant & Fluids", value: "Optimal Levels", status: "healthy", icon: "💧" },
+                    { label: "Cabin HEPA Air Filtration", value: "92% Remaining Life", status: "healthy", icon: "💨" }
+                  ].map((item, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContext: 'space-between', alignItems: 'center', padding: '20px 25px', backgroundColor: '#f8f9fa', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.04)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <span style={{ fontSize: '32px' }}>{item.icon}</span>
+                        <span style={{ fontSize: '24px', fontWeight: '600', color: '#333333' }}>{item.label}</span>
+                      </div>
+                      <span style={{ fontSize: '24px', fontWeight: '800', color: '#2b8a3e', marginLeft: 'auto' }}>{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setShowServiceModal(false)}
+                  className="interactive-button-hover"
+                  style={{
+                    width: '100%',
+                    padding: '20px',
+                    backgroundColor: '#10111a',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '22px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                >
+                  DISMISS & GO BACK
+                </button>
               </div>
             </div>
           )}
